@@ -1,12 +1,12 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 
-interface HelpModalProps {
+interface HelpPanelProps {
   helpOpen: boolean;
   setHelpOpen: (open: boolean) => void;
 }
 
-export default function HelpModal({ helpOpen, setHelpOpen }: HelpModalProps) {
+export default function HelpPanel({ helpOpen, setHelpOpen }: HelpPanelProps) {
   return (
     <AnimatePresence>
       {helpOpen && (

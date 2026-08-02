@@ -1,9 +1,11 @@
+const ZOOM_LEVELS = [10, 8, 6, 4, 3, 1];
+
 export async function reverseGeocode(lat: number, lng: number): Promise<string> {
   const fallback = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? "N" : "S"}, ${Math.abs(lng).toFixed(2)}°${lng >= 0 ? "E" : "W"}`;
 
   let geoData: any = null;
 
-  for (const zoom of [10, 8, 6, 4, 3, 1]) {
+  for (const zoom of ZOOM_LEVELS) {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=${zoom}&accept-language=en`
     );

@@ -2,8 +2,8 @@
 
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/system/sonner";
+import { TooltipProvider } from "@/components/system/tooltip";
 
 export const metadata = {
   title: "WorldTour AI",

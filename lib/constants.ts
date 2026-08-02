@@ -1,1 +1,0 @@
-export const ZOOM_LEVELS = [10, 8, 6, 4, 3, 1];

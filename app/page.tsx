@@ -3,25 +3,25 @@
 import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 
-import InfoPanel from "@/components/InfoPanel";
-import TopicPanel from "@/components/TopicPanel";
-import SearchHistorySidebar from "@/components/SearchHistorySidebar";
-import ExploreSidebar, { ExploreSidebarHandle } from "@/components/ExploreSidebar";
+import InfoPanel from "@/components/panels/InfoPanel";
+import TopicPanel from "@/components/panels/TopicPanel";
+import SearchHistorySidebar from "@/components/sidebar/SearchHistorySidebar";
+import ExploreSidebar, { ExploreSidebarHandle } from "@/components/sidebar/ExploreSidebar";
 import HeaderLogo from "@/components/header/HeaderLogo";
 import HeaderSearchBar from "@/components/header/HeaderSearchBar";
-import UtilityButtons from "@/components/UtilityButtons";
-import HelpModal from "@/components/HelpModal";
+import UtilityButtons from "@/components/buttons/UtilityButtons";
+import HelpPanel from "@/components/panels/HelpPanel";
 
-import { useSearchHistory } from "@/hooks/use-search-history";
-import useLocationInfo from "@/hooks/useLocationInfo";
-import useTopicRundown from "@/hooks/useTopicRundown";
-import useExplore from "@/hooks/useExplore";
-import useSurpriseMe from "@/hooks/useSurpriseMe";
-import useMapMarkers from "@/hooks/useMapMarkers";
+import { useSearchHistory } from "@/hooks/system/use-search-history";
+import useLocationInfo from "@/hooks/map/useLocationInfo";
+import useTopicRundown from "@/hooks/map/useTopicRundown";
+import useExplore from "@/hooks/map/useExplore";
+import useSurpriseMe from "@/hooks/map/useSurpriseMe";
+import useMapMarkers from "@/hooks/map/useMapMarkers";
 
 // Leaflet must be dynamically imported (SSR disabled)
-const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
-import type { MapViewHandle } from "@/components/MapView";
+const MapView = dynamic(() => import("@/components/map/MapView"), { ssr: false });
+import type { MapViewHandle } from "@/components/map/MapView";
 
 export default function Page() {
   // Refs
@@ -82,6 +82,7 @@ export default function Page() {
 
   return (
     <div className="h-screen w-screen overflow-hidden relative">
+      
       {/* Map */}
       <MapView
         ref={mapRef}
@@ -153,8 +154,8 @@ export default function Page() {
         setHelpOpen={setHelpOpen}
       />
 
-      {/* Help modal */}
-      <HelpModal helpOpen={helpOpen} setHelpOpen={setHelpOpen} />
+      {/* Help panel */}
+      <HelpPanel helpOpen={helpOpen} setHelpOpen={setHelpOpen} />
 
       {/* Topic panel */}
       <TopicPanel

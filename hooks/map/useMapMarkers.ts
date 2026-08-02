@@ -1,6 +1,6 @@
 "use client";
 
-import { ExploreLocation } from "@/components/ExploreSidebar";
+import { ExploreLocation } from "@/components/sidebar/ExploreSidebar";
 
 export default function useMapMarkers(exploreMarkers: ExploreLocation[]) {
   return exploreMarkers.map((loc) => ({

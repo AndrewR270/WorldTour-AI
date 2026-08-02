@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { SURPRISE_LOCATIONS } from "@/lib/locations";
+import { SURPRISE_LOCATIONS } from "@/lib/consts/surpriseLocations";
 
 export default function useSurpriseMe(handleLocationClick: any) {
   const [isSurprising, setIsSurprising] = useState(false);

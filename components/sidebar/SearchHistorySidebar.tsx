@@ -1,6 +1,6 @@
 import { History, MapPin, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { SearchHistoryEntry } from "@/hooks/use-search-history";
+import { SearchHistoryEntry } from "@/hooks/system/use-search-history";
 import { formatDistanceToNow } from "date-fns";
 
 interface SearchHistorySidebarProps {

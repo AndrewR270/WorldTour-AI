@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ExploreLocation } from "@/components/ExploreSidebar";
+import { ExploreLocation } from "@/components/sidebar/ExploreSidebar";
 
 export default function useExplore(handleLocationClick: any) {
   const [sidebarOpen, setSidebarOpen] = useState(false);

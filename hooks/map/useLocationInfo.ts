@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { reverseGeocode } from "../lib/api/location";
+import { reverseGeocode } from "../../lib/map/reverseGeocode";
 
 export default function useLocationInfo(addEntry: (name: string, lat: number, lng: number) => void) {
   const [panelOpen, setPanelOpen] = useState(false);

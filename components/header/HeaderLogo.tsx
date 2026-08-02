@@ -10,7 +10,7 @@ export default function HeaderLogo() {
         </div>
         <div className="hidden sm:block">
           <h1 className="font-display text-xl font-bold text-foreground drop-shadow-md tracking-wide">
-            WorldTour
+            WorldTour AI
           </h1>
           <p className="text-xs text-muted-foreground font-body italic drop-shadow-sm">
             The world is a book - start turning its pages!
