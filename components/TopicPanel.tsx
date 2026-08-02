@@ -2,7 +2,7 @@ import {
   X, Loader2, BookOpen, Users, Trophy, Sparkles, Radio, Lightbulb, ChevronRight, ExternalLink,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, Fragment, JSX } from "react";
 
 interface TopicPanelProps {
   isOpen: boolean;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+
 import InfoPanel from "@/components/InfoPanel";
 import TopicPanel from "@/components/TopicPanel";
 import SearchHistorySidebar from "@/components/SearchHistorySidebar";

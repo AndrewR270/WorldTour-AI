@@ -58,6 +58,60 @@
     --bookmark-green: 145 40% 32%;
     --bookmark-blue: 210 35% 40%;
   }
+  .dark {
+    /* Toast Notification */
+    --background: 25 15% 12%;
+    --foreground: 38 35% 88%;
+
+    /* UI Elements */
+    --card: 25 12% 16%;
+    --card-foreground: 38 35% 88%;
+
+    --popover: 25 12% 16%;
+    --popover-foreground: 38 35% 88%;
+
+    /* Icon Colors */
+    --primary: 38 30% 75%;
+    --primary-foreground: 25 15% 12%;
+
+    --secondary: 25 10% 20%;
+    --secondary-foreground: 38 35% 88%;
+
+    --muted: 25 8% 22%;
+    --muted-foreground: 38 25% 75%;
+
+    --accent: 145 25% 45%;
+    --accent-foreground: 25 15% 12%;
+
+    --destructive: 0 55% 55%;
+    --destructive-foreground: 25 15% 12%;
+
+    --border: 25 10% 25%;
+    --input: 25 10% 25%;
+    --ring: 38 30% 75%;
+
+    --sidebar-background: 25 10% 18%;
+    --sidebar-foreground: 38 35% 88%;
+    --sidebar-primary: 38 30% 75%;
+    --sidebar-primary-foreground: 25 15% 12%;
+    --sidebar-accent: 25 8% 22%;
+    --sidebar-accent-foreground: 38 35% 88%;
+    --sidebar-border: 25 10% 25%;
+    --sidebar-ring: 38 30% 75%;
+
+    --font-display: 'IM Fell English', serif;
+    --font-body: 'Crimson Text', serif;
+
+    --panel-width: 560px;
+
+    /* Journal-specific tokens */
+    --journal-ink: 38 35% 88%;
+    --journal-parchment: 25 10% 16%;
+    --journal-aged: 25 12% 20%;
+    --bookmark-red: 0 60% 65%;
+    --bookmark-green: 145 40% 55%;
+    --bookmark-blue: 210 35% 65%;
+  }
 }
 
 @layer base {
