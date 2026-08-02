@@ -1,9 +1,34 @@
+import { motion } from "framer-motion";
+import { Search } from "lucide-react";
 
-export default function HeaderSearchBar({
-  topSearchQuery,
-  setTopSearchQuery,
-}) {
-  return (
+interface HeaderSearchBarProps {
+  searchFocused: boolean;
+  setSearchFocused: (focused: boolean) => void;
+  topSearchQuery: string;
+  setTopSearchQuery: (query: string) => void;
+  setSidebarOpen: (open: boolean) => void;
+  setPanelOpen: (open: boolean) => void;
+  exploreOpen: boolean;
+  setExploreOpen: (open: boolean) => void;
+  exploreRef: React.RefObject<any>;
+  setLastExploreQuery: (query: string) => void;
+  fetchTopicRundown: (query: string) => void;
+}
+
+export default function HeaderSearchBar({ 
+  searchFocused, 
+  setSearchFocused, 
+  topSearchQuery, 
+  setTopSearchQuery, 
+  setSidebarOpen, 
+  setPanelOpen, 
+  exploreOpen, 
+  setExploreOpen, 
+  exploreRef, 
+  setLastExploreQuery, 
+  fetchTopicRundown }: HeaderSearchBarProps) 
+{ 
+  return (  
     <div className="fixed top-4 md:top-6 inset-x-0 z-[999] flex justify-center pointer-events-none px-4">
       <motion.form
         className="pointer-events-auto w-full max-w-md"

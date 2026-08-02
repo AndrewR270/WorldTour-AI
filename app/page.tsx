@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { Compass, Search, Loader2, Dices, HelpCircle, X, Globe } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import InfoPanel from "@/components/InfoPanel";
 import TopicPanel from "@/components/TopicPanel";
 import SearchHistorySidebar from "@/components/SearchHistorySidebar";
@@ -13,7 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { SURPRISE_LOCATIONS } from "@/lib/locations";
 
-import Logo from "@/components/HeaderLogo";
+import HeaderLogo from "@/components/header/HeaderLogo";
+import HeaderSearchBar from "@/components/header/HeaderSearchBar";
+
+import HelpModal from "@/components/HelpModal";
+
+import UtilityButtons from "@/components/UtilityButtons";
 
 import dynamic from "next/dist/shared/lib/dynamic";
 // Leaflet map must be dynamically imported (SSR disabled)
@@ -21,7 +24,6 @@ const MapView = dynamic(() => import("@/components/MapView"), {
   ssr: false,
 });
 import type { MapViewHandle } from "@/components/MapView";
-import HeaderLogo from "@/components/HeaderLogo";
 
 
 export default function Page() {
@@ -229,145 +231,33 @@ export default function Page() {
       <HeaderLogo />
 
       {/* Search bar - true center of viewport */}
-      <div className="fixed top-4 md:top-6 inset-x-0 z-[999] flex justify-center pointer-events-none px-4">
-        <motion.form
-          className="pointer-events-auto w-full max-w-md"
-          animate={{ scale: searchFocused ? 1.03 : 1 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            const q = topSearchQuery.trim();
-            if (!q) return;
-            setSidebarOpen(false);
-            setPanelOpen(false);
-            if (!exploreOpen) setExploreOpen(true);
-            exploreRef.current?.setQueryAndSearch(q);
-            setLastExploreQuery(q);
-            setTopSearchQuery("");
-            fetchTopicRundown(q);
-          }}
-        >
-          <div className="relative">
-            <input
-              type="text"
-              value={topSearchQuery}
-              onChange={(e) => setTopSearchQuery(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              placeholder="Search for anything in the world - see it on the map."
-              className="w-full h-10 pl-4 pr-10 rounded bg-card/90 border-2 border-border text-sm font-body text-foreground placeholder:text-muted-foreground/60 placeholder:italic focus:outline-none focus:border-primary/60 backdrop-blur-sm transition-all duration-300"
-              style={{
-                boxShadow: searchFocused
-                  ? "0 4px 20px hsl(25 55% 35% / 0.25), inset 0 1px 2px hsl(25 30% 20% / 0.08)"
-                  : "2px 2px 6px hsl(25 30% 20% / 0.12)",
-              }}
-            />
-            <button
-              type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded flex items-center justify-center text-primary hover:text-foreground transition-colors"
-            >
-              <Search className="w-4 h-4" />
-            </button>
-          </div>
-        </motion.form>
-      </div>
+      <HeaderSearchBar
+        searchFocused={searchFocused}
+        setSearchFocused={setSearchFocused}
+        topSearchQuery={topSearchQuery}
+        setTopSearchQuery={setTopSearchQuery}
+        setSidebarOpen={setSidebarOpen}
+        setPanelOpen={setPanelOpen}
+        exploreOpen={exploreOpen}
+        setExploreOpen={setExploreOpen}
+        exploreRef={exploreRef}
+        setLastExploreQuery={setLastExploreQuery}
+        fetchTopicRundown={fetchTopicRundown}
+      />
 
       {/* Bottom-left floating buttons */}
-      <div className="fixed bottom-6 left-4 z-[999] flex flex-col gap-3 pointer-events-auto">
-        <button
-          onClick={() => mapRef.current?.resetView()}
-          className="w-12 h-12 rounded-full bg-card/95 border-2 border-border flex items-center justify-center hover:bg-secondary/80 transition-all hover:scale-105 active:scale-95"
-          style={{ boxShadow: "2px 2px 8px hsl(25 30% 20% / 0.2)" }}
-          title="Reset map view"
-        >
-          <Globe className="w-5 h-5 text-primary" />
-        </button>
-        <button
-          onClick={handleSurpriseMe}
-          disabled={isSurprising}
-          className="w-12 h-12 rounded-full bg-card/95 border-2 border-border flex items-center justify-center hover:bg-secondary/80 transition-all hover:scale-105 active:scale-95"
-          style={{ boxShadow: "2px 2px 8px hsl(25 30% 20% / 0.2)" }}
-          title="Surprise Me!"
-        >
-          {isSurprising ? (
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          ) : (
-            <Dices className="w-5 h-5 text-primary" />
-          )}
-        </button>
-        <button
-          onClick={() => setHelpOpen(true)}
-          className="w-12 h-12 rounded-full bg-card/95 border-2 border-border flex items-center justify-center hover:bg-secondary/80 transition-all hover:scale-105 active:scale-95"
-          style={{ boxShadow: "2px 2px 8px hsl(25 30% 20% / 0.2)" }}
-          title="Help"
-        >
-          <HelpCircle className="w-5 h-5 text-primary" />
-        </button>
-      </div>
+      <UtilityButtons
+        mapRef={mapRef}
+        handleSurpriseMe={handleSurpriseMe}
+        isSurprising={isSurprising}
+        setHelpOpen={setHelpOpen}
+      />
 
       {/* Help modal */}
-      <AnimatePresence>
-        {helpOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1100] flex items-center justify-center p-4"
-            onClick={() => setHelpOpen(false)}
-          >
-            <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative bg-card journal-texture border-2 border-border rounded-lg max-w-md w-full p-6"
-              style={{ boxShadow: "4px 4px 20px hsl(25 30% 20% / 0.25)" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setHelpOpen(false)}
-                className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <h2 className="font-display text-xl font-bold text-foreground mb-4">
-                What Is WorldTour?
-              </h2>
-                <p>
-                  <strong className="text-primary">📖 Our Mission:</strong> Explore and learn about the world through your own unique lens. Journey to anywhere on the map, or discover places associated with any topic you can dream of. This is the story of our world, visualized.
-                </p>
-                <p>
-                  <strong className="text-primary">🗺 Tap the map:</strong> Click anywhere on the map. Discover History, Food, Culture, Stories, News, and Issues associated with this place on earth. Perfect for studying specific locations and learning local lore.
-                </p>
-                <p>
-                  <strong className="text-primary">🔍 Search:</strong> Enter any (yes any) topic. See stories come alive through geography as WorldTour finds locations associated with your query.
-                </p>
-                <p>
-                  <strong className="text-primary">🔗 Clickable keywords:</strong> Bolded words in descriptions are clickable! Click any highlighted term to instantly search and explore it further.
-                </p>
-                <p>
-                  <strong className="text-primary">📑 Explore tab:</strong> Browse through a list of locations relevant to your query. Click any destination to fly there and see how it connects to your search!
-                </p>
-                <p>
-                  <strong className="text-primary">📗 History tab:</strong> Your personal journey log. Revisit any place you've explored before.
-                </p>
-                <p>
-                  <strong className="text-primary">🎲 Surprise Me:</strong> Roll the dice! Get whisked away to a random, fascinating destination.
-                </p>
-                <p>
-                  <strong className="text-primary">🌍 Reset view:</strong> Zoom out to see the full world map again.
-                </p>
-                <p>
-                  <strong className="text-primary">📚 Sources:</strong> Each description includes linked sources at the bottom for further reading.
-                </p>
-              <p className="mt-4 text-xs font-body italic text-muted-foreground text-center">
-                Created by Andrew Rafal and Archith Erigineni.
-              </p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <HelpModal 
+        helpOpen={helpOpen}
+        setHelpOpen={setHelpOpen} 
+      />
 
       <TopicPanel
         isOpen={topicPanelOpen}
