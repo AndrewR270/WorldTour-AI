@@ -1,7 +1,8 @@
+"use client";
+
 import { useState, useCallback, useRef } from "react";
 import { Compass, Search, Loader2, Dices, HelpCircle, X, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import MapView, { MapViewHandle } from "@/components/MapView";
 import InfoPanel from "@/components/InfoPanel";
 import TopicPanel from "@/components/TopicPanel";
 import SearchHistorySidebar from "@/components/SearchHistorySidebar";
@@ -10,31 +11,20 @@ import { ExploreLocation } from "@/components/ExploreSidebar";
 import { useSearchHistory } from "@/hooks/use-search-history";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SURPRISE_LOCATIONS } from "@/lib/locations";
 
-const SURPRISE_LOCATIONS = [
-  { name: "Machu Picchu, Peru", lat: -13.1631, lng: -72.545 },
-  { name: "Petra, Jordan", lat: 30.3285, lng: 35.4444 },
-  { name: "Angkor Wat, Cambodia", lat: 13.4125, lng: 103.867 },
-  { name: "Santorini, Greece", lat: 36.3932, lng: 25.4615 },
-  { name: "Kyoto, Japan", lat: 35.0116, lng: 135.768 },
-  { name: "Marrakech, Morocco", lat: 31.6295, lng: -7.9811 },
-  { name: "Galápagos Islands, Ecuador", lat: -0.9538, lng: -90.9656 },
-  { name: "Dubrovnik, Croatia", lat: 42.6507, lng: 18.0944 },
-  { name: "Varanasi, India", lat: 25.3176, lng: 83.0068 },
-  { name: "Hallstatt, Austria", lat: 47.5622, lng: 13.6493 },
-  { name: "Cappadocia, Turkey", lat: 38.6431, lng: 34.8289 },
-  { name: "Havana, Cuba", lat: 23.1136, lng: -82.3666 },
-  { name: "Bagan, Myanmar", lat: 21.1717, lng: 94.8585 },
-  { name: "Reykjavik, Iceland", lat: 64.1466, lng: -21.9426 },
-  { name: "Zanzibar, Tanzania", lat: -6.1659, lng: 39.1989 },
-  { name: "Cusco, Peru", lat: -13.532, lng: -71.9675 },
-  { name: "Fez, Morocco", lat: 34.0331, lng: -5.0003 },
-  { name: "Luang Prabang, Laos", lat: 19.8856, lng: 102.1347 },
-  { name: "Easter Island, Chile", lat: -27.1127, lng: -109.3497 },
-  { name: "Samarkand, Uzbekistan", lat: 39.6542, lng: 66.9597 },
-];
+import Logo from "@/components/HeaderLogo";
 
-const Index = () => {
+import dynamic from "next/dist/shared/lib/dynamic";
+// Leaflet map must be dynamically imported (SSR disabled)
+const MapView = dynamic(() => import("@/components/MapView"), {
+  ssr: false,
+});
+import type { MapViewHandle } from "@/components/MapView";
+import HeaderLogo from "@/components/HeaderLogo";
+
+
+export default function Page() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [locationName, setLocationName] = useState<string | null>(null);
   const [content, setContent] = useState<string | null>(null);
@@ -236,22 +226,7 @@ const Index = () => {
       />
 
       {/* Logo */}
-      <div className="fixed top-4 md:top-6 left-0 z-[999] pointer-events-none">
-        <div className="flex items-center gap-3 pointer-events-auto ml-14 p-0 md:px-2">
-          <div className="w-10 h-10 rounded bg-card/90 border-2 border-border flex items-center justify-center"
-               style={{ boxShadow: "2px 2px 6px hsl(25 30% 20% / 0.15)" }}>
-            <Compass className="w-5 h-5 text-primary" />
-          </div>
-          <div className="hidden sm:block">
-            <h1 className="font-display text-xl font-bold text-foreground drop-shadow-md tracking-wide">
-              WorldTour
-            </h1>
-            <p className="text-xs text-muted-foreground font-body italic drop-shadow-sm">
-              The world is a book - start turning its pages!
-            </p>
-          </div>
-        </div>
-      </div>
+      <HeaderLogo />
 
       {/* Search bar - true center of viewport */}
       <div className="fixed top-4 md:top-6 inset-x-0 z-[999] flex justify-center pointer-events-none px-4">
@@ -419,5 +394,3 @@ const Index = () => {
     </div>
   );
 };
-
-export default Index;
