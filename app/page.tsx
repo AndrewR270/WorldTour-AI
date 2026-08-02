@@ -1,213 +1,103 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useRef, useState } from "react";
+import dynamic from "next/dynamic";
 
 import InfoPanel from "@/components/InfoPanel";
 import TopicPanel from "@/components/TopicPanel";
 import SearchHistorySidebar from "@/components/SearchHistorySidebar";
 import ExploreSidebar, { ExploreSidebarHandle } from "@/components/ExploreSidebar";
-import { ExploreLocation } from "@/components/ExploreSidebar";
-import { useSearchHistory } from "@/hooks/use-search-history";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { SURPRISE_LOCATIONS } from "@/lib/locations";
-
 import HeaderLogo from "@/components/header/HeaderLogo";
 import HeaderSearchBar from "@/components/header/HeaderSearchBar";
-
+import UtilityButtons from "@/components/UtilityButtons";
 import HelpModal from "@/components/HelpModal";
 
-import UtilityButtons from "@/components/UtilityButtons";
+import { useSearchHistory } from "@/hooks/use-search-history";
+import useLocationInfo from "@/hooks/useLocationInfo";
+import useTopicRundown from "@/hooks/useTopicRundown";
+import useExplore from "@/hooks/useExplore";
+import useSurpriseMe from "@/hooks/useSurpriseMe";
+import useMapMarkers from "@/hooks/useMapMarkers";
 
-import dynamic from "next/dist/shared/lib/dynamic";
-// Leaflet map must be dynamically imported (SSR disabled)
-const MapView = dynamic(() => import("@/components/MapView"), {
-  ssr: false,
-});
+// Leaflet must be dynamically imported (SSR disabled)
+const MapView = dynamic(() => import("@/components/MapView"), { ssr: false });
 import type { MapViewHandle } from "@/components/MapView";
 
-
 export default function Page() {
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [locationName, setLocationName] = useState<string | null>(null);
-  const [content, setContent] = useState<string | null>(null);
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [exploreContext, setExploreContext] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [lat, setLat] = useState<number | null>(null);
-  const [lng, setLng] = useState<number | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [exploreOpen, setExploreOpen] = useState(false);
-  const [exploreMarkers, setExploreMarkers] = useState<ExploreLocation[]>([]);
-  const [topSearchQuery, setTopSearchQuery] = useState("");
-  const [isSurprising, setIsSurprising] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [lastExploreQuery, setLastExploreQuery] = useState("");
-  const [topicPanelOpen, setTopicPanelOpen] = useState(false);
-  const [topicName, setTopicName] = useState<string | null>(null);
-  const [topicContent, setTopicContent] = useState<string | null>(null);
-  const [topicLoading, setTopicLoading] = useState(false);
+  // Refs
   const exploreRef = useRef<ExploreSidebarHandle>(null);
   const mapRef = useRef<MapViewHandle>(null);
 
-  const fetchTopicRundown = useCallback(async (topic: string) => {
-    setTopicPanelOpen(true);
-    setTopicLoading(true);
-    setTopicName(topic);
-    setTopicContent(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("topic-rundown", {
-        body: { topic },
-      });
-      if (error) throw error;
-      setTopicContent(data.content);
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Failed to fetch topic info.");
-      setTopicContent("Work in progress! Topic information retrieval will be running again soon. Sorry for the inconvenience.");
-    } finally {
-      setTopicLoading(false);
-    }
-  }, []);
-
-  const handleBoldClick = useCallback((term: string) => {
-    setSidebarOpen(false);
-    setPanelOpen(false);
-    if (!exploreOpen) setExploreOpen(true);
-    exploreRef.current?.setQueryAndSearch(term);
-    setLastExploreQuery(term);
-    fetchTopicRundown(term);
-  }, [exploreOpen, fetchTopicRundown]);
-
+  // Search history
   const { history, addEntry, clearHistory, removeEntry } = useSearchHistory();
 
-  const handleLocationClick = useCallback(async (clickLat: number, clickLng: number, searchQuery?: string) => {
-    setLat(clickLat);
-    setLng(clickLng);
-    setPanelOpen(true);
-    setIsLoading(true);
-    setContent(null);
-    setImageUrl(null);
-    setLocationName(null);
-    setExploreContext(null);
+  // Location info hook
+  const {
+    panelOpen,
+    setPanelOpen,
+    locationName,
+    content,
+    imageUrl,
+    exploreContext,
+    isLoading,
+    lat,
+    lng,
+    handleLocationClick,
+  } = useLocationInfo(addEntry);
 
-    // If clicking directly on map (not from explore), close topic panel
-    if (!searchQuery) {
-      setTopicPanelOpen(false);
-    }
+  // Topic rundown hook
+  const {
+    topicPanelOpen,
+    setTopicPanelOpen,
+    topicName,
+    topicContent,
+    topicLoading,
+    fetchTopicRundown,
+    handleBoldClick,
+  } = useTopicRundown();
 
-    const fallbackLocationName = `${Math.abs(clickLat).toFixed(2)}°${clickLat >= 0 ? "N" : "S"}, ${Math.abs(clickLng).toFixed(2)}°${clickLng >= 0 ? "E" : "W"}`;
+  // Explore hook
+  const {
+    sidebarOpen,
+    setSidebarOpen,
+    exploreOpen,
+    setExploreOpen,
+    exploreMarkers,
+    handleExploreSelect,
+    handleExploreResults,
+    handleHistorySelect,
+  } = useExplore(handleLocationClick);
 
-    try {
-      let geoData: any = null;
+  // Surprise me hook
+  const { isSurprising, handleSurpriseMe } = useSurpriseMe(handleLocationClick);
 
-      // Try progressively wider zoom levels to always find a named place
-      for (const zoom of [10, 8, 6, 4, 3, 1]) {
-        const geoRes = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${clickLat}&lon=${clickLng}&format=json&zoom=${zoom}&accept-language=en`
-        );
-        if (!geoRes.ok) continue;
-        const nextGeoData = await geoRes.json();
-        if (!nextGeoData?.error) {
-          geoData = nextGeoData;
-          // If we got a real place name (not just coordinates), use it
-          const hasName = nextGeoData?.name ||
-            nextGeoData?.address?.city ||
-            nextGeoData?.address?.town ||
-            nextGeoData?.address?.village ||
-            nextGeoData?.address?.county ||
-            nextGeoData?.address?.state ||
-            nextGeoData?.address?.country;
-          if (hasName) break;
-        }
-      }
+  // Map markers derived from explore results
+  const mapMarkers = useMapMarkers(exploreMarkers);
 
-      const name =
-        geoData?.address?.city ||
-        geoData?.address?.town ||
-        geoData?.address?.village ||
-        geoData?.address?.county ||
-        geoData?.address?.state ||
-        geoData?.address?.country ||
-        geoData?.name ||
-        geoData?.display_name?.split(",").slice(0, 2).join(",").trim() ||
-        fallbackLocationName;
-
-      const country = geoData?.address?.country || "";
-      const fullName = country && name !== country ? `${name}, ${country}` : name;
-      setLocationName(fullName);
-
-      addEntry(fullName, clickLat, clickLng);
-
-      const { data, error } = await supabase.functions.invoke("location-culture", {
-        body: { locationName: fullName, lat: clickLat, lng: clickLng, searchQuery: searchQuery || undefined },
-      });
-
-      if (error) throw error;
-      setContent(data.content);
-      setImageUrl(data.imageUrl || null);
-      setExploreContext(data.exploreContext || null);
-      if (data.source) {
-        console.log(`[CultureMap] Response source: ${data.source}`);
-      }
-    } catch (err: any) {
-      console.error(err);
-      toast.error("Failed to fetch info about this location");
-      setLocationName(`Remote area near ${fallbackLocationName}`);
-      setContent("Work in progress! Cultural information retrieval will be running again soon. Sorry for the inconvenience.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [addEntry]);
-
-  const handleSurpriseMe = useCallback(async () => {
-    if (isSurprising) return;
-    setIsSurprising(true);
-    const loc = SURPRISE_LOCATIONS[Math.floor(Math.random() * SURPRISE_LOCATIONS.length)];
-    toast(`✨ Whisking you away to ${loc.name}...`);
-    await handleLocationClick(loc.lat, loc.lng);
-    setIsSurprising(false);
-  }, [handleLocationClick, isSurprising]);
-
-  const handleHistorySelect = useCallback((entry: { locationName: string; lat: number; lng: number }) => {
-    handleLocationClick(entry.lat, entry.lng);
-    setSidebarOpen(false);
-  }, [handleLocationClick]);
-
-  const handleExploreSelect = useCallback((location: ExploreLocation, searchQuery: string) => {
-    mapRef.current?.flyTo(location.lat, location.lng);
-    handleLocationClick(location.lat, location.lng, searchQuery || undefined);
-  }, [handleLocationClick]);
-
-  const handleExploreResults = useCallback((locations: ExploreLocation[]) => {
-    setExploreMarkers(locations);
-  }, []);
-
-  const handleMarkerClick = useCallback((marker: { lat: number; lng: number; name: string }) => {
-    handleLocationClick(marker.lat, marker.lng);
-  }, [handleLocationClick]);
-
-  const mapMarkers = exploreMarkers.map((loc) => ({
-    lat: loc.lat,
-    lng: loc.lng,
-    name: loc.name,
-  }));
+  // UI state
+  const [topSearchQuery, setTopSearchQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [lastExploreQuery, setLastExploreQuery] = useState("");
 
   return (
     <div className="h-screen w-screen overflow-hidden relative">
+      {/* Map */}
       <MapView
         ref={mapRef}
         onLocationClick={handleLocationClick}
         markers={mapMarkers}
-        onMarkerClick={handleMarkerClick}
+        onMarkerClick={(m) => handleLocationClick(m.lat, m.lng)}
       />
 
       {/* Search history sidebar */}
       <SearchHistorySidebar
         isOpen={sidebarOpen}
         hidden={exploreOpen}
-        onToggle={() => { setSidebarOpen((o) => !o); setExploreOpen(false); }}
+        onToggle={() => {
+          setSidebarOpen((o) => !o);
+          setExploreOpen(false);
+        }}
         history={history}
         onSelect={handleHistorySelect}
         onRemove={removeEntry}
@@ -219,11 +109,20 @@ export default function Page() {
         ref={exploreRef}
         isOpen={exploreOpen}
         hidden={sidebarOpen}
-        onToggle={() => { setExploreOpen((o) => !o); setSidebarOpen(false); }}
-        onSelect={handleExploreSelect}
+        onToggle={() => {
+          setExploreOpen((o) => !o);
+          setSidebarOpen(false);
+        }}
+        onSelect={(loc, q) => {
+          setPanelOpen(false);
+          setTopicPanelOpen(false);
+          handleExploreSelect(loc, q, mapRef);
+        }}
         onResults={handleExploreResults}
         onSearch={(q) => {
           setPanelOpen(false);
+          setTopicPanelOpen(false);
+          setLastExploreQuery(q);
           fetchTopicRundown(q);
         }}
       />
@@ -231,7 +130,7 @@ export default function Page() {
       {/* Logo */}
       <HeaderLogo />
 
-      {/* Search bar - true center of viewport */}
+      {/* Search bar */}
       <HeaderSearchBar
         searchFocused={searchFocused}
         setSearchFocused={setSearchFocused}
@@ -246,7 +145,7 @@ export default function Page() {
         fetchTopicRundown={fetchTopicRundown}
       />
 
-      {/* Bottom-left floating buttons */}
+      {/* Floating buttons */}
       <UtilityButtons
         mapRef={mapRef}
         handleSurpriseMe={handleSurpriseMe}
@@ -255,11 +154,9 @@ export default function Page() {
       />
 
       {/* Help modal */}
-      <HelpModal 
-        helpOpen={helpOpen}
-        setHelpOpen={setHelpOpen} 
-      />
+      <HelpModal helpOpen={helpOpen} setHelpOpen={setHelpOpen} />
 
+      {/* Topic panel */}
       <TopicPanel
         isOpen={topicPanelOpen}
         onClose={() => setTopicPanelOpen(false)}
@@ -267,9 +164,10 @@ export default function Page() {
         content={topicContent}
         isLoading={topicLoading}
         hasLocationAbove={panelOpen}
-        onBoldClick={handleBoldClick}
+        onBoldClick={(term) => handleBoldClick(term, exploreOpen, setExploreOpen, exploreRef, setLastExploreQuery)}
       />
 
+      {/* Location info panel */}
       <InfoPanel
         isOpen={panelOpen}
         onClose={() => setPanelOpen(false)}
@@ -280,8 +178,8 @@ export default function Page() {
         lng={lng}
         exploreContext={exploreContext}
         hasTopicBelow={topicPanelOpen}
-        onBoldClick={handleBoldClick}
+        onBoldClick={(term) => handleBoldClick(term, exploreOpen, setExploreOpen, exploreRef, setLastExploreQuery)}
       />
     </div>
   );
-};
+}
