@@ -1,65 +1,423 @@
-import Image from "next/image";
+import { useState, useCallback, useRef } from "react";
+import { Compass, Search, Loader2, Dices, HelpCircle, X, Globe } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import MapView, { MapViewHandle } from "@/components/MapView";
+import InfoPanel from "@/components/InfoPanel";
+import TopicPanel from "@/components/TopicPanel";
+import SearchHistorySidebar from "@/components/SearchHistorySidebar";
+import ExploreSidebar, { ExploreSidebarHandle } from "@/components/ExploreSidebar";
+import { ExploreLocation } from "@/components/ExploreSidebar";
+import { useSearchHistory } from "@/hooks/use-search-history";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-export default function Home() {
+const SURPRISE_LOCATIONS = [
+  { name: "Machu Picchu, Peru", lat: -13.1631, lng: -72.545 },
+  { name: "Petra, Jordan", lat: 30.3285, lng: 35.4444 },
+  { name: "Angkor Wat, Cambodia", lat: 13.4125, lng: 103.867 },
+  { name: "Santorini, Greece", lat: 36.3932, lng: 25.4615 },
+  { name: "Kyoto, Japan", lat: 35.0116, lng: 135.768 },
+  { name: "Marrakech, Morocco", lat: 31.6295, lng: -7.9811 },
+  { name: "Galápagos Islands, Ecuador", lat: -0.9538, lng: -90.9656 },
+  { name: "Dubrovnik, Croatia", lat: 42.6507, lng: 18.0944 },
+  { name: "Varanasi, India", lat: 25.3176, lng: 83.0068 },
+  { name: "Hallstatt, Austria", lat: 47.5622, lng: 13.6493 },
+  { name: "Cappadocia, Turkey", lat: 38.6431, lng: 34.8289 },
+  { name: "Havana, Cuba", lat: 23.1136, lng: -82.3666 },
+  { name: "Bagan, Myanmar", lat: 21.1717, lng: 94.8585 },
+  { name: "Reykjavik, Iceland", lat: 64.1466, lng: -21.9426 },
+  { name: "Zanzibar, Tanzania", lat: -6.1659, lng: 39.1989 },
+  { name: "Cusco, Peru", lat: -13.532, lng: -71.9675 },
+  { name: "Fez, Morocco", lat: 34.0331, lng: -5.0003 },
+  { name: "Luang Prabang, Laos", lat: 19.8856, lng: 102.1347 },
+  { name: "Easter Island, Chile", lat: -27.1127, lng: -109.3497 },
+  { name: "Samarkand, Uzbekistan", lat: 39.6542, lng: 66.9597 },
+];
+
+const Index = () => {
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [locationName, setLocationName] = useState<string | null>(null);
+  const [content, setContent] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [exploreContext, setExploreContext] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [exploreOpen, setExploreOpen] = useState(false);
+  const [exploreMarkers, setExploreMarkers] = useState<ExploreLocation[]>([]);
+  const [topSearchQuery, setTopSearchQuery] = useState("");
+  const [isSurprising, setIsSurprising] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [lastExploreQuery, setLastExploreQuery] = useState("");
+  const [topicPanelOpen, setTopicPanelOpen] = useState(false);
+  const [topicName, setTopicName] = useState<string | null>(null);
+  const [topicContent, setTopicContent] = useState<string | null>(null);
+  const [topicLoading, setTopicLoading] = useState(false);
+  const exploreRef = useRef<ExploreSidebarHandle>(null);
+  const mapRef = useRef<MapViewHandle>(null);
+
+  const fetchTopicRundown = useCallback(async (topic: string) => {
+    setTopicPanelOpen(true);
+    setTopicLoading(true);
+    setTopicName(topic);
+    setTopicContent(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("topic-rundown", {
+        body: { topic },
+      });
+      if (error) throw error;
+      setTopicContent(data.content);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to fetch topic info.");
+      setTopicContent("Work in progress! Topic information retrieval will be running again soon. Sorry for the inconvenience.");
+    } finally {
+      setTopicLoading(false);
+    }
+  }, []);
+
+  const handleBoldClick = useCallback((term: string) => {
+    setSidebarOpen(false);
+    setPanelOpen(false);
+    if (!exploreOpen) setExploreOpen(true);
+    exploreRef.current?.setQueryAndSearch(term);
+    setLastExploreQuery(term);
+    fetchTopicRundown(term);
+  }, [exploreOpen, fetchTopicRundown]);
+
+  const { history, addEntry, clearHistory, removeEntry } = useSearchHistory();
+
+  const handleLocationClick = useCallback(async (clickLat: number, clickLng: number, searchQuery?: string) => {
+    setLat(clickLat);
+    setLng(clickLng);
+    setPanelOpen(true);
+    setIsLoading(true);
+    setContent(null);
+    setImageUrl(null);
+    setLocationName(null);
+    setExploreContext(null);
+
+    // If clicking directly on map (not from explore), close topic panel
+    if (!searchQuery) {
+      setTopicPanelOpen(false);
+    }
+
+    const fallbackLocationName = `${Math.abs(clickLat).toFixed(2)}°${clickLat >= 0 ? "N" : "S"}, ${Math.abs(clickLng).toFixed(2)}°${clickLng >= 0 ? "E" : "W"}`;
+
+    try {
+      let geoData: any = null;
+
+      // Try progressively wider zoom levels to always find a named place
+      for (const zoom of [10, 8, 6, 4, 3, 1]) {
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${clickLat}&lon=${clickLng}&format=json&zoom=${zoom}&accept-language=en`
+        );
+        if (!geoRes.ok) continue;
+        const nextGeoData = await geoRes.json();
+        if (!nextGeoData?.error) {
+          geoData = nextGeoData;
+          // If we got a real place name (not just coordinates), use it
+          const hasName = nextGeoData?.name ||
+            nextGeoData?.address?.city ||
+            nextGeoData?.address?.town ||
+            nextGeoData?.address?.village ||
+            nextGeoData?.address?.county ||
+            nextGeoData?.address?.state ||
+            nextGeoData?.address?.country;
+          if (hasName) break;
+        }
+      }
+
+      const name =
+        geoData?.address?.city ||
+        geoData?.address?.town ||
+        geoData?.address?.village ||
+        geoData?.address?.county ||
+        geoData?.address?.state ||
+        geoData?.address?.country ||
+        geoData?.name ||
+        geoData?.display_name?.split(",").slice(0, 2).join(",").trim() ||
+        fallbackLocationName;
+
+      const country = geoData?.address?.country || "";
+      const fullName = country && name !== country ? `${name}, ${country}` : name;
+      setLocationName(fullName);
+
+      addEntry(fullName, clickLat, clickLng);
+
+      const { data, error } = await supabase.functions.invoke("location-culture", {
+        body: { locationName: fullName, lat: clickLat, lng: clickLng, searchQuery: searchQuery || undefined },
+      });
+
+      if (error) throw error;
+      setContent(data.content);
+      setImageUrl(data.imageUrl || null);
+      setExploreContext(data.exploreContext || null);
+      if (data.source) {
+        console.log(`[CultureMap] Response source: ${data.source}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Failed to fetch info about this location");
+      setLocationName(`Remote area near ${fallbackLocationName}`);
+      setContent("Work in progress! Cultural information retrieval will be running again soon. Sorry for the inconvenience.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [addEntry]);
+
+  const handleSurpriseMe = useCallback(async () => {
+    if (isSurprising) return;
+    setIsSurprising(true);
+    const loc = SURPRISE_LOCATIONS[Math.floor(Math.random() * SURPRISE_LOCATIONS.length)];
+    toast(`✨ Whisking you away to ${loc.name}...`);
+    await handleLocationClick(loc.lat, loc.lng);
+    setIsSurprising(false);
+  }, [handleLocationClick, isSurprising]);
+
+  const handleHistorySelect = useCallback((entry: { locationName: string; lat: number; lng: number }) => {
+    handleLocationClick(entry.lat, entry.lng);
+    setSidebarOpen(false);
+  }, [handleLocationClick]);
+
+  const handleExploreSelect = useCallback((location: ExploreLocation, searchQuery: string) => {
+    mapRef.current?.flyTo(location.lat, location.lng);
+    handleLocationClick(location.lat, location.lng, searchQuery || undefined);
+  }, [handleLocationClick]);
+
+  const handleExploreResults = useCallback((locations: ExploreLocation[]) => {
+    setExploreMarkers(locations);
+  }, []);
+
+  const handleMarkerClick = useCallback((marker: { lat: number; lng: number; name: string }) => {
+    handleLocationClick(marker.lat, marker.lng);
+  }, [handleLocationClick]);
+
+  const mapMarkers = exploreMarkers.map((loc) => ({
+    lat: loc.lat,
+    lng: loc.lng,
+    name: loc.name,
+  }));
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="h-screen w-screen overflow-hidden relative">
+      <MapView
+        ref={mapRef}
+        onLocationClick={handleLocationClick}
+        markers={mapMarkers}
+        onMarkerClick={handleMarkerClick}
+      />
+
+      {/* Search history sidebar */}
+      <SearchHistorySidebar
+        isOpen={sidebarOpen}
+        hidden={exploreOpen}
+        onToggle={() => { setSidebarOpen((o) => !o); setExploreOpen(false); }}
+        history={history}
+        onSelect={handleHistorySelect}
+        onRemove={removeEntry}
+        onClear={clearHistory}
+      />
+
+      {/* Explore sidebar */}
+      <ExploreSidebar
+        ref={exploreRef}
+        isOpen={exploreOpen}
+        hidden={sidebarOpen}
+        onToggle={() => { setExploreOpen((o) => !o); setSidebarOpen(false); }}
+        onSelect={handleExploreSelect}
+        onResults={handleExploreResults}
+        onSearch={(q) => {
+          setPanelOpen(false);
+          fetchTopicRundown(q);
+        }}
+      />
+
+      {/* Logo */}
+      <div className="fixed top-4 md:top-6 left-0 z-[999] pointer-events-none">
+        <div className="flex items-center gap-3 pointer-events-auto ml-14 p-0 md:px-2">
+          <div className="w-10 h-10 rounded bg-card/90 border-2 border-border flex items-center justify-center"
+               style={{ boxShadow: "2px 2px 6px hsl(25 30% 20% / 0.15)" }}>
+            <Compass className="w-5 h-5 text-primary" />
+          </div>
+          <div className="hidden sm:block">
+            <h1 className="font-display text-xl font-bold text-foreground drop-shadow-md tracking-wide">
+              WorldTour
+            </h1>
+            <p className="text-xs text-muted-foreground font-body italic drop-shadow-sm">
+              The world is a book - start turning its pages!
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      </div>
+
+      {/* Search bar - true center of viewport */}
+      <div className="fixed top-4 md:top-6 inset-x-0 z-[999] flex justify-center pointer-events-none px-4">
+        <motion.form
+          className="pointer-events-auto w-full max-w-md"
+          animate={{ scale: searchFocused ? 1.03 : 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            const q = topSearchQuery.trim();
+            if (!q) return;
+            setSidebarOpen(false);
+            setPanelOpen(false);
+            if (!exploreOpen) setExploreOpen(true);
+            exploreRef.current?.setQueryAndSearch(q);
+            setLastExploreQuery(q);
+            setTopSearchQuery("");
+            fetchTopicRundown(q);
+          }}
+        >
+          <div className="relative">
+            <input
+              type="text"
+              value={topSearchQuery}
+              onChange={(e) => setTopSearchQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder="Search for anything in the world - see it on the map."
+              className="w-full h-10 pl-4 pr-10 rounded bg-card/90 border-2 border-border text-sm font-body text-foreground placeholder:text-muted-foreground/60 placeholder:italic focus:outline-none focus:border-primary/60 backdrop-blur-sm transition-all duration-300"
+              style={{
+                boxShadow: searchFocused
+                  ? "0 4px 20px hsl(25 55% 35% / 0.25), inset 0 1px 2px hsl(25 30% 20% / 0.08)"
+                  : "2px 2px 6px hsl(25 30% 20% / 0.12)",
+              }}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <button
+              type="submit"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded flex items-center justify-center text-primary hover:text-foreground transition-colors"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </div>
+        </motion.form>
+      </div>
+
+      {/* Bottom-left floating buttons */}
+      <div className="fixed bottom-6 left-4 z-[999] flex flex-col gap-3 pointer-events-auto">
+        <button
+          onClick={() => mapRef.current?.resetView()}
+          className="w-12 h-12 rounded-full bg-card/95 border-2 border-border flex items-center justify-center hover:bg-secondary/80 transition-all hover:scale-105 active:scale-95"
+          style={{ boxShadow: "2px 2px 8px hsl(25 30% 20% / 0.2)" }}
+          title="Reset map view"
+        >
+          <Globe className="w-5 h-5 text-primary" />
+        </button>
+        <button
+          onClick={handleSurpriseMe}
+          disabled={isSurprising}
+          className="w-12 h-12 rounded-full bg-card/95 border-2 border-border flex items-center justify-center hover:bg-secondary/80 transition-all hover:scale-105 active:scale-95"
+          style={{ boxShadow: "2px 2px 8px hsl(25 30% 20% / 0.2)" }}
+          title="Surprise Me!"
+        >
+          {isSurprising ? (
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />
+          ) : (
+            <Dices className="w-5 h-5 text-primary" />
+          )}
+        </button>
+        <button
+          onClick={() => setHelpOpen(true)}
+          className="w-12 h-12 rounded-full bg-card/95 border-2 border-border flex items-center justify-center hover:bg-secondary/80 transition-all hover:scale-105 active:scale-95"
+          style={{ boxShadow: "2px 2px 8px hsl(25 30% 20% / 0.2)" }}
+          title="Help"
+        >
+          <HelpCircle className="w-5 h-5 text-primary" />
+        </button>
+      </div>
+
+      {/* Help modal */}
+      <AnimatePresence>
+        {helpOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1100] flex items-center justify-center p-4"
+            onClick={() => setHelpOpen(false)}
           >
-            Documentation
-          </a>
-        </div>
-      </main>
+            <div className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative bg-card journal-texture border-2 border-border rounded-lg max-w-md w-full p-6"
+              style={{ boxShadow: "4px 4px 20px hsl(25 30% 20% / 0.25)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setHelpOpen(false)}
+                className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <h2 className="font-display text-xl font-bold text-foreground mb-4">
+                What Is WorldTour?
+              </h2>
+                <p>
+                  <strong className="text-primary">📖 Our Mission:</strong> Explore and learn about the world through your own unique lens. Journey to anywhere on the map, or discover places associated with any topic you can dream of. This is the story of our world, visualized.
+                </p>
+                <p>
+                  <strong className="text-primary">🗺 Tap the map:</strong> Click anywhere on the map. Discover History, Food, Culture, Stories, News, and Issues associated with this place on earth. Perfect for studying specific locations and learning local lore.
+                </p>
+                <p>
+                  <strong className="text-primary">🔍 Search:</strong> Enter any (yes any) topic. See stories come alive through geography as WorldTour finds locations associated with your query.
+                </p>
+                <p>
+                  <strong className="text-primary">🔗 Clickable keywords:</strong> Bolded words in descriptions are clickable! Click any highlighted term to instantly search and explore it further.
+                </p>
+                <p>
+                  <strong className="text-primary">📑 Explore tab:</strong> Browse through a list of locations relevant to your query. Click any destination to fly there and see how it connects to your search!
+                </p>
+                <p>
+                  <strong className="text-primary">📗 History tab:</strong> Your personal journey log. Revisit any place you've explored before.
+                </p>
+                <p>
+                  <strong className="text-primary">🎲 Surprise Me:</strong> Roll the dice! Get whisked away to a random, fascinating destination.
+                </p>
+                <p>
+                  <strong className="text-primary">🌍 Reset view:</strong> Zoom out to see the full world map again.
+                </p>
+                <p>
+                  <strong className="text-primary">📚 Sources:</strong> Each description includes linked sources at the bottom for further reading.
+                </p>
+              <p className="mt-4 text-xs font-body italic text-muted-foreground text-center">
+                Created by Andrew Rafal and Archith Erigineni.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <TopicPanel
+        isOpen={topicPanelOpen}
+        onClose={() => setTopicPanelOpen(false)}
+        topicName={topicName}
+        content={topicContent}
+        isLoading={topicLoading}
+        hasLocationAbove={panelOpen}
+        onBoldClick={handleBoldClick}
+      />
+
+      <InfoPanel
+        isOpen={panelOpen}
+        onClose={() => setPanelOpen(false)}
+        locationName={locationName}
+        content={content}
+        isLoading={isLoading}
+        lat={lat}
+        lng={lng}
+        exploreContext={exploreContext}
+        hasTopicBelow={topicPanelOpen}
+        onBoldClick={handleBoldClick}
+      />
     </div>
   );
-}
+};
+
+export default Index;
