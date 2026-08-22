@@ -21,11 +21,17 @@ function loadHistory(): SearchHistoryEntry[] {
 }
 
 export function useSearchHistory() {
-  const [history, setHistory] = useState<SearchHistoryEntry[]>(loadHistory);
+  const [history, setHistory] = useState<SearchHistoryEntry[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-  }, [history]);
+    setHistory(loadHistory());
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+  }, [history, hydrated]);
 
   const addEntry = useCallback((locationName: string, lat: number, lng: number) => {
     setHistory((prev) => {

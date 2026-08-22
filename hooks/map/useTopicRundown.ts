@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function useTopicRundown() {
@@ -17,11 +16,13 @@ export default function useTopicRundown() {
     setTopicContent(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("topic-rundown", {
-        body: { topic },
+      const response = await fetch("/api/topic-rundown", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic }),
       });
-
-      if (error) throw error;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Topic request failed");
       setTopicContent(data.content);
     } catch (err) {
       console.error(err);

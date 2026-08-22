@@ -1,7 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Compass, Search, MapPin, Loader2, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export interface ExploreLocation {
@@ -59,13 +58,14 @@ const ExploreSidebar = forwardRef<ExploreSidebarHandle, ExploreSidebarProps>(({ 
     onResults([]);
 
     try {
-      const { data, error } = await supabase.functions.invoke("explore-locations", {
-        body: { query: trimmed },
+      const response = await fetch("/api/explore-locations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: trimmed }),
       });
-
-      if (error) throw error;
-
-      const locations: ExploreLocation[] = data?.locations || [];
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Explore request failed");
+      const locations: ExploreLocation[] = data.locations || [];
       setResults(locations);
       onResults(locations);
 
@@ -86,13 +86,14 @@ const ExploreSidebar = forwardRef<ExploreSidebarHandle, ExploreSidebarProps>(({ 
 
     try {
       const exclude = results.map((r) => r.name);
-      const { data, error } = await supabase.functions.invoke("explore-locations", {
-        body: { query: lastQuery, exclude },
+      const response = await fetch("/api/explore-locations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: lastQuery, exclude }),
       });
-
-      if (error) throw error;
-
-      const newLocations: ExploreLocation[] = data?.locations || [];
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Explore request failed");
+      const newLocations: ExploreLocation[] = data.locations || [];
       if (newLocations.length === 0) {
         toast.info("No more destinations to discover");
         return;

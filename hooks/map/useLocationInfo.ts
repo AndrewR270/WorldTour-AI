@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { reverseGeocode } from "../../lib/map/reverseGeocode";
 
@@ -32,12 +31,13 @@ export default function useLocationInfo(addEntry: (name: string, lat: number, ln
 
         addEntry(fullName, clickLat, clickLng);
 
-        const { data, error } = await supabase.functions.invoke("location-culture", {
-          body: { locationName: fullName, lat: clickLat, lng: clickLng, searchQuery },
+        const response = await fetch("/api/location-culture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locationName: fullName, lat: clickLat, lng: clickLng, searchQuery }),
         });
-
-        if (error) throw error;
-
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Location request failed");
         setContent(data.content);
         setImageUrl(data.imageUrl || null);
         setExploreContext(data.exploreContext || null);

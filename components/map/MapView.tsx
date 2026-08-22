@@ -1,7 +1,7 @@
 import { MapContainer, TileLayer, useMapEvents, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 
 interface MapMarker {
   lat: number;
@@ -22,6 +22,15 @@ export interface MapViewHandle {
 
 const redIcon = new L.Icon({
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
+const selectedIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png",
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -53,6 +62,18 @@ function MapController({ mapRef }: { mapRef: React.Ref<MapViewHandle> }) {
 }
 
 const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onLocationClick, markers = [], onMarkerClick }, ref) => {
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  const handleMapClick = (lat: number, lng: number) => {
+    setSelectedLocation({ lat, lng });
+    onLocationClick(lat, lng);
+  };
+
+  const handleMarkerClick = (marker: MapMarker) => {
+    setSelectedLocation({ lat: marker.lat, lng: marker.lng });
+    onMarkerClick?.(marker);
+  };
+
   return (
     <MapContainer
       center={[20, 0]}
@@ -66,15 +87,20 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onLocationClick, mark
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
       />
-      <ClickHandler onLocationClick={onLocationClick} />
+      <ClickHandler onLocationClick={handleMapClick} />
       <MapController mapRef={ref} />
+      {selectedLocation && (
+        <Marker position={[selectedLocation.lat, selectedLocation.lng]} icon={selectedIcon}>
+          <Popup>Selected location</Popup>
+        </Marker>
+      )}
       {markers.map((m, i) => (
         <Marker
           key={`${m.name}-${i}`}
           position={[m.lat, m.lng]}
           icon={redIcon}
           eventHandlers={{
-            click: () => onMarkerClick?.(m),
+            click: () => handleMarkerClick(m),
           }}
         >
           <Popup>{m.name}</Popup>
