@@ -1,4 +1,5 @@
 import { generateGeminiContent, jsonError } from "@/lib/server/gemini";
+import { fetchWikipediaImage } from "@/lib/wikipedia";
 
 const systemPrompt = `
     Rules:
@@ -34,15 +35,7 @@ const systemPrompt = `
     - [Label](URL)
 `;
 
-// Disabled for now until we decide where to put images.
-/*
-async function fetchWikipediaImage(locationName: string) {
-  const response = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(locationName)}`);
-  if (!response.ok) return null;
-  const data = await response.json();
-  return data?.thumbnail?.source?.replace(/\/\d+px-/, "/800px-") || data?.originalimage?.source || null;
-}
-*/
+// Use the shared Wikipedia helper to fetch thumbnails for responses.
 
 export async function POST(request: Request) {
   try {
@@ -58,7 +51,7 @@ export async function POST(request: Request) {
       `Tell me about: ${locationName} (${lat}, ${lng})`
     );
     
-    //const imagePromise = fetchWikipediaImage(locationName).catch(() => null);
+    const imagePromise = fetchWikipediaImage(locationName).catch(() => null);
 
     // 2. Kick off search context in parallel if searchQuery exists
     const explorePromise = (typeof searchQuery === "string" && searchQuery.trim())
@@ -69,13 +62,13 @@ export async function POST(request: Request) {
       : Promise.resolve(null);
 
     // 3. Wait for all promises to settle together
-    const [content, exploreContext] = await Promise.all([
+    const [content, imageUrl, exploreContext] = await Promise.all([
       contentPromise,
-      //imagePromise,
+      imagePromise,
       explorePromise
     ]);
 
-    return Response.json({ content, exploreContext });
+    return Response.json({ content, imageUrl, exploreContext });
   } catch (error) {
     console.error("location-culture route error:", error);
     return jsonError(error instanceof Error ? error.message : "Unable to fetch location information");

@@ -1,4 +1,5 @@
 import { generateGeminiContent, jsonError } from "@/lib/server/gemini";
+import { fetchWikipediaImage } from "@/lib/wikipedia";
 
 const systemPrompt = `
     You are an encyclopedia and cultural journalist. Given a topic, provide a rich, 
@@ -34,8 +35,12 @@ export async function POST(request: Request) {
   try {
     const { topic } = await request.json();
     if (typeof topic !== "string" || !topic.trim()) return jsonError("topic is required", 400);
-    const content = await generateGeminiContent(systemPrompt, `Tell me about: ${topic.trim()}`);
-    return Response.json({ content });
+    const contentPromise = generateGeminiContent(systemPrompt, `Tell me about: ${topic.trim()}`);
+    const imagePromise = fetchWikipediaImage(topic.trim()).catch(() => null);
+
+    const [content, imageUrl] = await Promise.all([contentPromise, imagePromise]);
+
+    return Response.json({ content, imageUrl });
   } catch (error) {
     console.error("topic-rundown route error:", error);
     return jsonError(error instanceof Error ? error.message : "Unable to fetch topic information");

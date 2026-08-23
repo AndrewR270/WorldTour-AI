@@ -7,6 +7,7 @@ export default function useTopicRundown() {
   const [topicPanelOpen, setTopicPanelOpen] = useState(false);
   const [topicName, setTopicName] = useState<string | null>(null);
   const [topicContent, setTopicContent] = useState<string | null>(null);
+  const [topicImage, setTopicImage] = useState<string | null>(null);
   const [topicLoading, setTopicLoading] = useState(false);
 
   const fetchTopicRundown = useCallback(async (topic: string) => {
@@ -24,6 +25,7 @@ export default function useTopicRundown() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Topic request failed");
       setTopicContent(data.content);
+      setTopicImage(data.imageUrl || null);
     } catch (err) {
       console.error(err);
       toast.error("Failed to fetch topic info.");

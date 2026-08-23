@@ -4,7 +4,14 @@ export async function generateGeminiContent(systemInstruction: string, prompt: s
   const apiUrl = rawApiUrl.replace(/[;/"\s]+$/, ""); 
   const apiKey = process.env.GEMINI_KEY;
 
-  if (!apiKey) { throw new Error("GEMINI_KEY is not configured"); }
+  // In development, allow a safe fallback so the app can be tested without
+  // an actual Gemini API key. In production, require the key.
+  if (!apiKey) {
+    if (process.env.NODE_ENV !== "production") {
+      return `Dev fallback: no GEMINI_KEY provided. Prompt received:\n${prompt}`;
+    }
+    throw new Error("GEMINI_KEY is not configured");
+  }
 
   const response = await fetch(apiUrl, {
     method: "POST",

@@ -16,6 +16,7 @@ interface InfoPanelProps {
   exploreContext: string | null;
   hasTopicBelow?: boolean;
   onBoldClick?: (term: string) => void;
+  imageUrl?: string | null;
 }
 
 const tabs = [
@@ -167,13 +168,14 @@ function SourceLinks({ sources }: { sources: { label: string; url: string }[] })
 }
 
 const InfoPanel = ({
-  isOpen, onClose, locationName, content, isLoading, lat, lng, exploreContext, hasTopicBelow, onBoldClick,
+  isOpen, onClose, locationName, content, isLoading, lat, lng, exploreContext, hasTopicBelow, onBoldClick, imageUrl,
 }: InfoPanelProps) => {
   const [activeTab, setActiveTab] = useState("history");
 
   const parsed = useMemo(() => (content ? parseContent(content) : { sections: {}, sources: [] }), [content]);
   const activeContent = parsed.sections[activeTab];
   const activeTabMeta = tabs.find((t) => t.key === activeTab)!;
+  const [imgFailed, setImgFailed] = useState(false);
 
   return (
     <AnimatePresence>
@@ -223,6 +225,8 @@ const InfoPanel = ({
             </div>
           )}
 
+          {/* Representative image is rendered inside the scrollable content to avoid duplication */}
+
           {/* Tabs */}
           <div className="flex flex-wrap gap-1.5 px-4 py-2.5 border-b border-border shrink-0">
             {tabs.map(({ key, icon: Icon, label }) => {
@@ -256,21 +260,50 @@ const InfoPanel = ({
               </div>
             ) : activeContent ? (
               <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="p-5"
-              >
-                <RichContent text={activeContent} onBoldClick={onBoldClick} />
-              </motion.div>
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="p-5"
+                >
+                  {/* Text content first; image placed after the content so it appears at the end of the scroll box. */}
+                  <RichContent text={activeContent} onBoldClick={onBoldClick} />
+                  {imageUrl && (
+                    <div className="mt-4">
+                      {!imgFailed ? (
+                        <img
+                          src={imageUrl}
+                          alt={locationName || "location image"}
+                          className="w-full h-40 object-cover rounded-md"
+                          onError={() => setImgFailed(true)}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="text-xs text-muted-foreground font-body">
+                          <p>Image failed to load. <a href={imageUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">Open image</a></p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
             ) : content ? (
               <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground text-sm px-6">
-                <activeTabMeta.icon className="w-7 h-7 text-muted-foreground/30" />
-                <p className="text-center font-body italic">
-                  Work in progress! No {activeTabMeta.label.toLowerCase()} entries found for this destination.
-                </p>
-              </div>
+                  <activeTabMeta.icon className="w-7 h-7 text-muted-foreground/30" />
+                  <p className="text-center font-body italic">
+                    Work in progress! No {activeTabMeta.label.toLowerCase()} entries found for this destination.
+                  </p>
+                  {imageUrl && (
+                    <div className="w-full mt-3">
+                      {!imgFailed ? (
+                        <img src={imageUrl} alt={locationName || "location image"} className="w-full h-40 object-cover rounded-md" onError={() => setImgFailed(true)} loading="lazy" />
+                      ) : (
+                        <div className="text-xs text-muted-foreground font-body">
+                          <p>Image failed to load. <a href={imageUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">Open image</a></p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
             ) : (
               <div className="flex items-center justify-center h-full text-muted-foreground text-sm font-body italic">
                 Click anywhere on the map to begin exploring

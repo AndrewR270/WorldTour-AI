@@ -52,6 +52,7 @@ export default function Page() {
     topicName,
     topicContent,
     topicLoading,
+    topicImage,
     fetchTopicRundown,
     handleBoldClick,
   } = useTopicRundown();
@@ -163,6 +164,7 @@ export default function Page() {
         onClose={() => setTopicPanelOpen(false)}
         topicName={topicName}
         content={topicContent}
+        imageUrl={topicImage}
         isLoading={topicLoading}
         hasLocationAbove={panelOpen}
         onBoldClick={(term) => handleBoldClick(term, exploreOpen, setExploreOpen, exploreRef, setLastExploreQuery)}
@@ -174,6 +176,7 @@ export default function Page() {
         onClose={() => setPanelOpen(false)}
         locationName={locationName}
         content={content}
+        imageUrl={imageUrl}
         isLoading={isLoading}
         lat={lat}
         lng={lng}
