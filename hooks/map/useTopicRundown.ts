@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import type { Dispatch, RefObject, SetStateAction } from "react";
 import { toast } from "sonner";
+import type { ExploreSidebarHandle } from "@/components/sidebar/ExploreSidebar";
 
 export default function useTopicRundown() {
   const [topicPanelOpen, setTopicPanelOpen] = useState(false);
@@ -36,7 +38,13 @@ export default function useTopicRundown() {
   }, []);
 
   const handleBoldClick = useCallback(
-    (term: string, exploreOpen: boolean, setExploreOpen: (v: boolean) => void, exploreRef: any, setLastExploreQuery: any) => {
+    (
+      term: string,
+      exploreOpen: boolean,
+      setExploreOpen: (v: boolean) => void,
+      exploreRef: RefObject<ExploreSidebarHandle | null>,
+      setLastExploreQuery: Dispatch<SetStateAction<string>>
+    ) => {
       if (!exploreOpen) setExploreOpen(true);
       exploreRef.current?.setQueryAndSearch(term);
       setLastExploreQuery(term);
@@ -50,6 +58,7 @@ export default function useTopicRundown() {
     setTopicPanelOpen,
     topicName,
     topicContent,
+    topicImage,
     topicLoading,
     fetchTopicRundown,
     handleBoldClick,
