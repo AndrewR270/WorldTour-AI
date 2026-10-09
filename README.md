@@ -5,6 +5,9 @@ Explore and learn about the world through your own unique lens. Journey to anywh
 Visit and explore here!
 https://world-tour-ai.vercel.app/
 
+Watch a demo here!
+https://youtu.be/kPvVLIWDY0g?si=xuYSdmt54gWGng9j
+
 ## Specs
 
 - Framework: React + Next.js
