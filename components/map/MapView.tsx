@@ -3,6 +3,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { forwardRef, useImperativeHandle, useState } from "react";
 
+const CARTO_KEY = process.env.CARTO_KEY ?? "";
+
 interface MapMarker {
   lat: number;
   lng: number;
@@ -85,7 +87,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onLocationClick, mark
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_4fmx_1_70655d3f560483715ba996b9"
+        url={`https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`}
       />
       <ClickHandler onLocationClick={handleMapClick} />
       <MapController mapRef={ref} />
