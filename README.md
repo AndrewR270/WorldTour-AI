@@ -46,6 +46,14 @@ Helper functions for APIs are stored in lib/.
 
 ## Dev Details
 
+### Map tiles
+
+The map uses the standard OpenStreetMap tile service and does not require an API
+key. Keep the visible attribution on the map and follow the
+[OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/);
+the public tile service is best-effort and intended for moderate, interactive
+use, not bulk downloads or prefetching.
+
 ### Install dependencies
 
 ```bash
