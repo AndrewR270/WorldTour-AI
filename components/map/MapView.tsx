@@ -85,7 +85,7 @@ const MapView = forwardRef<MapViewHandle, MapViewProps>(({ onLocationClick, mark
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
-        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_4fmx_1_70655d3f560483715ba996b9"
       />
       <ClickHandler onLocationClick={handleMapClick} />
       <MapController mapRef={ref} />
